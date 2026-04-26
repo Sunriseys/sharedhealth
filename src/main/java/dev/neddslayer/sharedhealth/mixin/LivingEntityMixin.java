@@ -87,6 +87,5 @@ public abstract class LivingEntityMixin extends Entity {
                 }
             }
         }
-        (VillagerEntity)
     }
 }
