@@ -27,9 +27,16 @@ public class SharedHealth implements ModInitializer {
             .forBoolean(true).category(GameRuleCategory.PLAYER).buildAndRegister(Identifier.of("sharedhealth", "share_effect"));
     public static final GameRule<Boolean> LIMIT_HEALTH = GameRuleBuilder
             .forBoolean(true).category(GameRuleCategory.PLAYER).buildAndRegister(Identifier.of("sharedhealth", "limit_health"));
+
+    public static final GameRule<Boolean> RANDOM_TELEPORT = GameRuleBuilder
+            .forBoolean(false).category(GameRuleCategory.PLAYER).buildAndRegister(Identifier.of("sharedhealth", "random_teleport"));
     private static boolean lastHealthValue = true;
     private static boolean lastHungerValue = true;
     private static boolean lastEffectValue = true;
+
+    public static boolean isCollateralDeath = false;
+    public static boolean randomTeleport = false;
+    public static boolean isSyncingHealth = false;
 
     /**
      * Runs the mod initializer.
@@ -41,6 +48,7 @@ public class SharedHealth implements ModInitializer {
             boolean currentHungerValue = world.getGameRules().getValue(SYNC_HUNGER);
             boolean currentEffectValue = world.getGameRules().getValue(SYNC_EFFECT);
             boolean limitHealthValue = world.getGameRules().getValue(LIMIT_HEALTH);
+            randomTeleport = world.getGameRules().getValue(RANDOM_TELEPORT);
             if (currentHealthValue != lastHealthValue && currentHealthValue) {
                 world.getServer().getPlayerManager().getPlayerList().forEach(player -> player.sendMessageToClient(Text.translatable("gamerule.sharedhealth.share_health.enabled").formatted(Formatting.GREEN, Formatting.BOLD), false));
                 lastHealthValue = true;
@@ -69,6 +77,7 @@ public class SharedHealth implements ModInitializer {
                 SharedHealthComponent component = SHARED_HEALTH.get(world.getScoreboard());
                 if (component.getHealth() > 20 && limitHealthValue) component.setHealth(20);
                 float finalKnownHealth = component.getHealth();
+                isSyncingHealth = true;
                 world.getPlayers().forEach(playerEntity -> {
                     try {
                         float currentHealth = playerEntity.getHealth();
@@ -82,6 +91,7 @@ public class SharedHealth implements ModInitializer {
                         System.err.println(e.getMessage());
                     }
                 });
+                isSyncingHealth = false;
             }
             if (world.getGameRules().getValue(SYNC_HUNGER)) {
                 SharedHungerComponent component = SHARED_HUNGER.get(world.getScoreboard());
