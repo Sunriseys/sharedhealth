@@ -4,8 +4,13 @@ import com.mojang.authlib.GameProfile;
 import dev.neddslayer.sharedhealth.components.SharedHealthComponent;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.message.MessageType;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.OrderedText;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
+import net.minecraft.text.TextContent;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -13,6 +18,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.List;
 
 import static dev.neddslayer.sharedhealth.components.SharedComponentsInitializer.*;
 
@@ -31,6 +38,15 @@ public abstract class ServerPlayerEntityMixin extends PlayerEntity {
 			float currentHealth = this.getHealth();
 			SharedHealthComponent component = SHARED_HEALTH.get(this.getEntityWorld().getScoreboard());
 			float knownHealth = component.getHealth();
+            if ((knownHealth - currentHealth) > 0.0) {
+                String playerName = this.getName().getString();
+                if ((knownHealth - currentHealth) > 6.0) {
+                    this.getEntityWorld().getServer().getPlayerManager().broadcast(Text.of(playerName + " A PRIT " + amount/2 + " COEURS, WTF"), false);
+                }
+                else {
+                    this.getEntityWorld().getServer().getPlayerManager().broadcast(Text.of(playerName + " a prit " + amount/2 + " coeurs"), true);
+                }
+            }
 			if (currentHealth != knownHealth) {
 				component.setHealth(currentHealth);
 			}

@@ -19,6 +19,9 @@ public class SharedComponentsInitializer implements ScoreboardComponentInitializ
     public static final ComponentKey<SharedHungerComponent> SHARED_HUNGER =
             ComponentRegistry.getOrCreate(id("hunger"), SharedHungerComponent.class);
 
+    public static final ComponentKey<SharedEffectComponent> SHARED_EFFECT =
+            ComponentRegistry.getOrCreate(id("effect"), SharedEffectComponent.class);
+
     public static final ComponentKey<SharedSaturationComponent> SHARED_SATURATION =
             ComponentRegistry.getOrCreate(id("saturation"), SharedSaturationComponent.class);
 
@@ -29,6 +32,7 @@ public class SharedComponentsInitializer implements ScoreboardComponentInitializ
     public void registerScoreboardComponentFactories(ScoreboardComponentFactoryRegistry registry) {
         registry.registerScoreboardComponent(SHARED_HEALTH, SharedHealthComponent::new);
         registry.registerScoreboardComponent(SHARED_HUNGER, SharedHungerComponent::new);
+        registry.registerScoreboardComponent(SHARED_EFFECT, SharedEffectComponent::new);
 		registry.registerScoreboardComponent(SHARED_SATURATION, SharedSaturationComponent::new);
 		registry.registerScoreboardComponent(SHARED_EXHAUSTION, SharedExhaustionComponent::new);
     }

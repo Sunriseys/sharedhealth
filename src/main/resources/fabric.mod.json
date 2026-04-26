@@ -32,6 +32,7 @@
     "cardinal-components": [
       "sharedhealth:health",
       "sharedhealth:hunger",
+      "sharedhealth:effect",
       "sharedhealth:saturation",
       "sharedhealth:exhaustion"
     ]

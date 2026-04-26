@@ -1,14 +1,15 @@
 package dev.neddslayer.sharedhealth;
 
-import dev.neddslayer.sharedhealth.components.SharedExhaustionComponent;
-import dev.neddslayer.sharedhealth.components.SharedHealthComponent;
-import dev.neddslayer.sharedhealth.components.SharedHungerComponent;
-import dev.neddslayer.sharedhealth.components.SharedSaturationComponent;
+import dev.neddslayer.sharedhealth.components.*;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gamerule.v1.GameRuleBuilder;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.entity.effect.StatusEffect;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -22,10 +23,13 @@ public class SharedHealth implements ModInitializer {
             .forBoolean(true).category(GameRuleCategory.PLAYER).buildAndRegister(Identifier.of("sharedhealth", "share_health"));
     public static final GameRule<Boolean> SYNC_HUNGER = GameRuleBuilder
             .forBoolean(true).category(GameRuleCategory.PLAYER).buildAndRegister(Identifier.of("sharedhealth", "share_hunger"));
+    public static final GameRule<Boolean> SYNC_EFFECT = GameRuleBuilder
+            .forBoolean(true).category(GameRuleCategory.PLAYER).buildAndRegister(Identifier.of("sharedhealth", "share_effect"));
     public static final GameRule<Boolean> LIMIT_HEALTH = GameRuleBuilder
             .forBoolean(true).category(GameRuleCategory.PLAYER).buildAndRegister(Identifier.of("sharedhealth", "limit_health"));
     private static boolean lastHealthValue = true;
     private static boolean lastHungerValue = true;
+    private static boolean lastEffectValue = true;
 
     /**
      * Runs the mod initializer.
@@ -35,6 +39,7 @@ public class SharedHealth implements ModInitializer {
         ServerTickEvents.END_WORLD_TICK.register((world -> {
             boolean currentHealthValue = world.getGameRules().getValue(SYNC_HEALTH);
             boolean currentHungerValue = world.getGameRules().getValue(SYNC_HUNGER);
+            boolean currentEffectValue = world.getGameRules().getValue(SYNC_EFFECT);
             boolean limitHealthValue = world.getGameRules().getValue(LIMIT_HEALTH);
             if (currentHealthValue != lastHealthValue && currentHealthValue) {
                 world.getServer().getPlayerManager().getPlayerList().forEach(player -> player.sendMessageToClient(Text.translatable("gamerule.sharedhealth.share_health.enabled").formatted(Formatting.GREEN, Formatting.BOLD), false));
@@ -51,6 +56,14 @@ public class SharedHealth implements ModInitializer {
             else if (currentHungerValue != lastHungerValue) {
                 world.getServer().getPlayerManager().getPlayerList().forEach(player -> player.sendMessageToClient(Text.translatable("gamerule.sharedhealth.share_hunger.disabled").formatted(Formatting.RED, Formatting.BOLD), false));
                 lastHungerValue = false;
+            }
+            if (currentEffectValue != lastEffectValue && currentEffectValue) {
+                world.getServer().getPlayerManager().getPlayerList().forEach(player -> player.sendMessageToClient(Text.translatable("gamerule.sharedhealth.share_effect.enabled").formatted(Formatting.GREEN, Formatting.BOLD), false));
+                lastEffectValue = true;
+            }
+            else if (currentEffectValue != lastEffectValue) {
+                world.getServer().getPlayerManager().getPlayerList().forEach(player -> player.sendMessageToClient(Text.translatable("gamerule.sharedhealth.share_effect.disabled").formatted(Formatting.RED, Formatting.BOLD), false));
+                lastEffectValue = false;
             }
             if (world.getGameRules().getValue(SYNC_HEALTH)) {
                 SharedHealthComponent component = SHARED_HEALTH.get(world.getScoreboard());
@@ -98,6 +111,31 @@ public class SharedHealth implements ModInitializer {
                         System.out.println(e.getMessage());
                     }
                 });
+            }
+            if (world.getGameRules().getValue(SYNC_EFFECT)) {
+                SharedEffectComponent effectComponent = SHARED_EFFECT.get(world.getScoreboard());
+                RegistryEntry<StatusEffect> sharedEffectType = effectComponent.getEffect();
+
+                if (sharedEffectType != null) {
+                    StatusEffectInstance masterInstance = null;
+                    for (ServerPlayerEntity p : world.getPlayers()) {
+                        if (p.hasStatusEffect(sharedEffectType)) {
+                            masterInstance = p.getStatusEffect(sharedEffectType);
+                            break;
+                        }
+                    }
+                    if (masterInstance != null) {
+                        final StatusEffectInstance reference = masterInstance;
+                        world.getPlayers().forEach(player -> {
+                            StatusEffectInstance current = player.getStatusEffect(sharedEffectType);
+                            if (current == null || Math.abs(current.getDuration() - reference.getDuration()) > 20) {
+                                player.addStatusEffect(new StatusEffectInstance(reference));
+                            }
+                        });
+                    }
+                } else {
+                    //Si on veut gerer qu'un groupe ou tout le monde
+                }
             }
         }));
 
