@@ -10,6 +10,7 @@ import net.minecraft.scoreboard.ScoreboardCriterion;
 import net.minecraft.scoreboard.ScoreboardObjective;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
@@ -40,6 +41,20 @@ public abstract class ServerPlayerEntityMixin extends PlayerEntity {
             if (currentHealth != knownHealth) {
                 component.setHealth(currentHealth);
             }
+
+            if ((knownHealth - currentHealth) > 0.0) {
+                String playerName = this.getName().getString();
+                if ((knownHealth - currentHealth) > 6.0) {
+                    this.getEntityWorld().getServer().getPlayerManager().broadcast(Text.of(playerName + " A PRIT " + amount/2 + " COEURS, WTF"), false);
+                }
+                else {
+                    this.getEntityWorld().getServer().getPlayerManager().broadcast(Text.of(playerName + " a prit " + amount/2 + " coeurs"), true);
+                }
+            }
+            if (currentHealth != knownHealth) {
+                component.setHealth(currentHealth);
+            }
+
 
             if(SharedHealth.randomTeleport && !SharedHealth.isSyncingHealth) {
                 List<ServerPlayerEntity> players = new ArrayList<>(world.getServer().getPlayerManager().getPlayerList());

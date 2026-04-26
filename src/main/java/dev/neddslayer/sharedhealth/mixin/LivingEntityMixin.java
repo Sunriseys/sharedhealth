@@ -1,5 +1,6 @@
 package dev.neddslayer.sharedhealth.mixin;
 
+import dev.neddslayer.sharedhealth.SharedHealth;
 import dev.neddslayer.sharedhealth.components.SharedEffectComponent;
 import dev.neddslayer.sharedhealth.components.SharedHealthComponent;
 import net.minecraft.entity.Entity;
@@ -12,6 +13,7 @@ import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.world.World;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -56,28 +58,59 @@ public abstract class LivingEntityMixin extends Entity {
 
     @Inject(method = "onStatusEffectApplied", at = @At("RETURN"))
     protected void onEffectApplied(StatusEffectInstance effect, net.minecraft.entity.Entity source, CallbackInfo ci) {
+        if (isSyncingEffect){
+            return;
+        }
+
+
         if ((Object) this instanceof ServerPlayerEntity player && this.hasStatusEffect(effect.getEffectType())) {
-            RegistryEntry<StatusEffect> effectType = effect.getEffectType();
-            SharedEffectComponent component = SHARED_EFFECT.get(this.getEntityWorld().getScoreboard());
-            component.setEffect(effectType);
-            //String playerName = this.getName().getString();
-            for (ServerPlayerEntity otherPlayer : player.getEntityWorld().getPlayers()) {
-                if (otherPlayer != player) {
-                    StatusEffectInstance otherInstance = otherPlayer.getStatusEffect(effectType);
-                    if (otherInstance == null || Math.abs(otherInstance.getDuration() - effect.getDuration()) > 20) {
-                        otherPlayer.addStatusEffect(new StatusEffectInstance(effect));
+            if (!player.getEntityWorld().getGameRules().getValue(SharedHealth.SYNC_EFFECT)) {
+                return;
+            }
+            isSyncingEffect = true;
+            try {
+                RegistryEntry<StatusEffect> effectType = effect.getEffectType();
+                SharedEffectComponent component = SHARED_EFFECT.get(this.getEntityWorld().getScoreboard());
+                component.setEffect(effectType);
+                //String playerName = this.getName().getString();
+                for (ServerPlayerEntity otherPlayer : player.getEntityWorld().getPlayers()) {
+                    if (otherPlayer != player) {
+                        StatusEffectInstance otherInstance = otherPlayer.getStatusEffect(effectType);
+                        if (otherInstance == null || Math.abs(otherInstance.getDuration() - effect.getDuration()) > 20) {
+                            otherPlayer.addStatusEffect(new StatusEffectInstance(effect));
+                        }
+                    } else {
+                        this.getEntityWorld().getServer().getPlayerManager().broadcast(Text.of(otherPlayer.getName().getString() + " a recu l'effet " + effect.getEffectType().getIdAsString() + " pendant " + effect.getDuration() / 20 + " secondes"), false);
                     }
                 }
-                else {
-                    this.getEntityWorld().getServer().getPlayerManager().broadcast(Text.of(otherPlayer.getName().getString() + " a recu l'effet " + effect.getEffectType().getIdAsString() + " pendant " + effect.getDuration()/60 + " secondes"), false);
-                }
+            }
+            finally {
+                isSyncingEffect = false;
             }
         }
     }
 
+    @Inject(method = "onStatusEffectUpgraded", at = @At("RETURN"))
+    protected void onEffectsUpgrade(StatusEffectInstance effect, boolean reapplyEffect, Entity source, CallbackInfo ci){
+        if (isSyncingEffect){
+            return;
+        }
+
+        if (reapplyEffect && (Object) this instanceof ServerPlayerEntity player && this.hasStatusEffect(effect.getEffectType())) {
+            if (!player.getEntityWorld().getGameRules().getValue(SharedHealth.SYNC_EFFECT)) {
+                return;
+            }
+            onEffectApplied(effect, source, ci);
+        }
+    }
+
+
     @Inject(method = "onStatusEffectsRemoved", at = @At("RETURN"))
     protected void onEffectsRemoved(Collection<StatusEffectInstance> effects, CallbackInfo ci) {
         if ((Object) this instanceof ServerPlayerEntity player && this.isAlive()) {
+            if (!player.getEntityWorld().getGameRules().getValue(SharedHealth.SYNC_EFFECT)) {
+                return;
+            }
             SharedEffectComponent component = SHARED_EFFECT.get(this.getEntityWorld().getScoreboard());
             for (StatusEffectInstance effectInstance : effects) {
                 RegistryEntry<StatusEffect> effectType = effectInstance.getEffectType();
