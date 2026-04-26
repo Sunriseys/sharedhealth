@@ -60,14 +60,16 @@ public abstract class LivingEntityMixin extends Entity {
             RegistryEntry<StatusEffect> effectType = effect.getEffectType();
             SharedEffectComponent component = SHARED_EFFECT.get(this.getEntityWorld().getScoreboard());
             component.setEffect(effectType);
-            String playerName = this.getName().getString();
-            this.getEntityWorld().getServer().getPlayerManager().broadcast(Text.of(playerName + " a recu l'effet " + effect.getEffectType().getIdAsString() + " pendant " + effect.getDuration()/60 + " secondes"), false);
+            //String playerName = this.getName().getString();
             for (ServerPlayerEntity otherPlayer : player.getEntityWorld().getPlayers()) {
                 if (otherPlayer != player) {
                     StatusEffectInstance otherInstance = otherPlayer.getStatusEffect(effectType);
                     if (otherInstance == null || Math.abs(otherInstance.getDuration() - effect.getDuration()) > 20) {
                         otherPlayer.addStatusEffect(new StatusEffectInstance(effect));
                     }
+                }
+                else {
+                    this.getEntityWorld().getServer().getPlayerManager().broadcast(Text.of(otherPlayer.getName().getString() + " a recu l'effet " + effect.getEffectType().getIdAsString() + " pendant " + effect.getDuration()/60 + " secondes"), false);
                 }
             }
         }
